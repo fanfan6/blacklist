@@ -12,12 +12,13 @@ import urllib
 import urllib2
 
 from gevent.pool import Pool
+from gevent.queue import Queue
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-# db = web.database(host='127.0.0.1', port=3306, dbn='mysql', db='fanfan', user='root', pw='mysql')
-db = web.database(host='127.0.0.1', port=3306, dbn='mysql', db='fanfan', user='root', pw='Tz09Jk4h%7X')
+db = web.database(host='127.0.0.1', port=3306, dbn='mysql', db='fanfan', user='root', pw='')
+# db = web.database(host='127.0.0.1', port=3306, dbn='mysql', db='fanfan', user='root', pw='Tz09Jk4h%7X')
 
 
 url = "https://sp0.baidu.com/8aQDcjqpAAV3otqbppnN2DJv/api.php?"
@@ -55,13 +56,17 @@ user_agent = ['Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/534.1
 
 headers = {'User-Agent': random.choice(user_agent)}
 
+queue = Queue()
+
+#with open(sys.argv[1], 'r') as fp:
+#    for line in fp:
+#        queue.put(line.strip())
+
 idcard_heard_0_6 = []
 with open(sys.argv[1], 'r') as fr:
     for line in fr:
         idcard_heard_0_6.append(line[:6])
-
 idcard_heard_7_10 = [x for x in range(1930, 2000)]
-
 idcard_heard_11 = ['0', '1']
 
 idcard_heards = ((str(x) + str(y) + z) for x in idcard_heard_0_6 for y in idcard_heard_7_10 for z in idcard_heard_11)
@@ -97,23 +102,31 @@ def main_work(item):
     return mycallback(res)
 
 
-def save_sql(name, idcard):
-    try:
-        return db.select('brokelist', where='name=$name and idcard=$idcard', vars=locals())[0]
-    except:
-        return db.insert('brokelist', name=name, idcard=idcard, create_time=int(time.time()))
+def save_sql():
+    sql = ''
+    for i in range(1000):
+        res = queue.get()
+        sql = sql + '(' + '"' + str(res['name']) + '"' + ',' + '"' + str(res['idcard']) + '"' + ',' + str(int(time.time())) + ')' + ','
+    db.query("insert into brokelist (name, idcard, create_time) values " + sql[:-1] + ';')
 
+    #try:
+    #    return db.select('brokelist', where='name=$name and idcard=$idcard', vars=locals())[0]
+    #except:
+    #    return db.insert('brokelist', name=name, idcard=idcard, create_time=int(time.time()))
 
 def mycallback(res):
     for item in res:
         if item:
             name = item[0]['result'][0]['iname']
             idcard = item[0]['result'][0]['cardNum']
-            save_sql(name, idcard)
+            res = {'name': name, 'idcard': idcard}
+            queue.put(res)
+            print queue.qsize()
+            if queue.qsize() > 999:
+                save_sql()
 
 
 if __name__ == '__main__':
-    pool = Pool(20)
+    pool = Pool(5)
     pool.map(main_work, idcard_heards)
-
 

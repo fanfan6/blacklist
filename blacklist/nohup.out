@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/root/blacklist/blacklist/spider_gevent.py", line 3, in <module>
+    from gevent import monkey
+ImportError: No module named gevent
+Traceback (most recent call last):
+  File "/root/blacklist/blacklist/spider_gevent.py", line 3, in <module>
+    from gevent import monkey
+ImportError: No module named gevent
